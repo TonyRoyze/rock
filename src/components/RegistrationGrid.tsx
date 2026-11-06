@@ -80,12 +80,12 @@ export function RegistrationGrid({ students, tournaments, registrations, onToggl
         <div className="w-full overflow-hidden rounded-lg bg-background/30">
           <Table aria-label="Register students to tournament events" tabIndex={0} className="min-w-max">
             <TableHeader>
-              <TableRow className="border-b border-white/10 hover:bg-transparent">
-                <TableHead className="sticky left-0 z-20 h-52 min-w-64 border-r border-white/10 bg-background/30 pl-5 align-bottom md:pl-6">Student name</TableHead>
-                <TableHead className="h-52 min-w-24 border-r border-white/10 align-bottom">Class</TableHead>
-                <TableHead className="h-52 min-w-36 border-r border-white/10 align-bottom">Admission number</TableHead>
+              <TableRow className="border-b border-white/20 hover:bg-transparent">
+                <TableHead className="sticky left-0 z-20 h-52 min-w-64 border-r border-white/20 bg-background/30 pl-5 align-bottom md:pl-6">Student name</TableHead>
+                <TableHead className="h-52 min-w-24 border-r border-white/20 align-bottom">Class</TableHead>
+                <TableHead className="h-52 min-w-36 border-r border-white/20 align-bottom">Admission number</TableHead>
                 {events.map((event: any) => (
-                  <TableHead key={event._id} className="h-52 w-16 min-w-16 border-r border-white/10 px-2 align-bottom text-center last:border-r-0">
+                  <TableHead key={event._id} className="h-52 w-16 min-w-16 border-r border-white/20 px-2 align-bottom text-center last:border-r-0">
                     <span
                       className="mx-auto block h-44 w-8 whitespace-nowrap text-center text-muted-foreground"
                       style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
@@ -99,17 +99,17 @@ export function RegistrationGrid({ students, tournaments, registrations, onToggl
             </TableHeader>
             <TableBody>
               {visibleStudents.map((student: any) => (
-                <TableRow key={student._id} className="border-b border-white/10 hover:bg-white/[0.025]">
-                  <TableCell className="sticky left-0 z-10 min-w-64 border-r border-white/10 bg-background/30 py-4 pl-5 font-medium md:pl-6">{student.name}</TableCell>
-                  <TableCell className="border-r border-white/10 py-4">{student.className}</TableCell>
-                  <TableCell className="border-r border-white/10 py-4 tabular-nums">{student.registrationNumber}</TableCell>
+                <TableRow key={student._id} className="border-b border-white/20 hover:bg-white/[0.025]">
+                  <TableCell className="sticky left-0 z-10 min-w-64 border-r border-white/20 bg-background/30 py-4 pl-5 font-medium md:pl-6">{student.name}</TableCell>
+                  <TableCell className="border-r border-white/20 py-4">{student.className}</TableCell>
+                  <TableCell className="border-r border-white/20 py-4 tabular-nums">{student.registrationNumber}</TableCell>
                   {events.map((event: any) => {
                     const registration = registrations.find((row: any) =>
                       row.studentId === student._id && row.eventId === event._id
                     );
                     const isRegistered = Boolean(registration);
                     return (
-                      <TableCell key={event._id} className="border-r border-white/10 p-1 text-center last:border-r-0">
+                      <TableCell key={event._id} className="border-r border-white/20 p-1 text-center last:border-r-0">
                         <Button
                           type="button"
                           size="icon-sm"
@@ -128,7 +128,7 @@ export function RegistrationGrid({ students, tournaments, registrations, onToggl
                 </TableRow>
               ))}
               {visibleStudents.length === 0 && (
-                <TableRow className="border-b border-white/10">
+                <TableRow className="border-b border-white/20">
                   <TableCell colSpan={3 + events.length} className="py-12 text-center text-muted-foreground">
                     {students.length === 0
                       ? 'Add students before registering for events.'
@@ -139,7 +139,7 @@ export function RegistrationGrid({ students, tournaments, registrations, onToggl
                 </TableRow>
               )}
               {visibleStudents.length > 0 && events.length === 0 && (
-                <TableRow className="border-b border-white/10">
+                <TableRow className="border-b border-white/20">
                   <TableCell colSpan={3} className="py-12 text-center text-muted-foreground">There are no events in this age group.</TableCell>
                 </TableRow>
               )}
