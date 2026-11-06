@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable } from './DataTable';
+import { RegistrationGrid } from './RegistrationGrid';
 import { toast, Toaster } from 'sonner';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './app-sidebar';
@@ -27,19 +28,17 @@ const sampleStudents = [
   { _id:'s8', name:'Jalden Hakel', className:'7E2', registrationNumber:'30635', dateOfBirth:'2014/07/23', phoneNumber:'0777489146' },
   { _id:'s9', name:'Kyle Boudewyn', className:'7E2', registrationNumber:'30689', dateOfBirth:'2014/06/24', phoneNumber:'0759494999' },
 ];
-const sampleTournament = { _id:'t1', name:'Annual Sports Meet', startDate:'2026-06-20', venue:'School Grounds', events:[{_id:'e1',name:'100m Sprint',ageGroup:'Under 15',eventDate:'2026-06-20'},{_id:'e2',name:'Long Jump',ageGroup:'Under 17',eventDate:'2026-06-20'}] };
+const sampleTournament = { _id:'t1', name:'Annual Sports Meet', startDate:'2026-06-20', venue:'School Grounds', events:[{_id:'e1',name:'100m Sprint',ageGroup:'Under 15',eventDate:'2026-06-20'},{_id:'e2',name:'Long Jump',ageGroup:'Under 18',eventDate:'2026-06-20'}] };
 const ageGroups = ['Under 12','Under 13','Under 14','Under 15','Under 16','Under 18','Under 20'];
 const blankEvent = () => ({ name:'', ageGroup:'Under 15', eventDate:'' });
 const normalizeDate = (value?:string) => value?.includes('-') ? value.replaceAll('-', '/') : value ?? '';
 
-function App({ students:remoteStudents, tournaments:remoteTournaments, events:remoteEvents, registrations:remoteRegistrations, createStudent, createTournament, registerStudent, updateStudent, deleteStudent, deleteRegistration, deleteTournament, deleteEvent, updateTournament }:any) {
+function App({ students:remoteStudents, tournaments:remoteTournaments, registrations:remoteRegistrations, createStudent, createTournament, registerStudent, updateStudent, deleteStudent, deleteRegistration, deleteTournament, deleteEvent, updateTournament }:any) {
   const [page, setPage] = useState('Students');
   const [localStudents, setLocalStudents] = useState(sampleStudents);
   const [localTournaments, setLocalTournaments] = useState([sampleTournament]);
   const [localRegistrations, setLocalRegistrations] = useState<any[]>([]);
   const [editingStudent, setEditingStudent] = useState<any>(null);
-  const [selectedEvent, setSelectedEvent] = useState('');
-  const [studentId, setStudentId] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [tournamentOpen, setTournamentOpen] = useState(false);
   const [editingTournament, setEditingTournament] = useState<any>(null);
@@ -50,7 +49,6 @@ function App({ students:remoteStudents, tournaments:remoteTournaments, events:re
     classOrder.compare(a.className, b.className) || classOrder.compare(a.name, b.name)
   );
   const tournaments = remoteTournaments ?? localTournaments;
-  const events = remoteEvents ?? tournaments.flatMap((t:any)=>t.events.map((e:any)=>({...e,tournament:t})));
   const registrations = remoteRegistrations ?? localRegistrations;
   const notify = (message:string) => toast(message);
 
@@ -87,10 +85,17 @@ function App({ students:remoteStudents, tournaments:remoteTournaments, events:re
       setTournamentOpen(false); setEditingTournament(null); setEventRows([blankEvent()]);
     } catch(err:any) { notify(err.message ?? (editingTournament?'Could not update tournament.':'Could not create tournament.')); }
   };
-  const onRegister = async (e:React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); if(!studentId || !selectedEvent) { notify('Choose a student and event.'); return; }
-    try { await registerStudent?.({studentId,eventId:selectedEvent as any}); if(!registerStudent) notify('Connect Convex to save registrations.'); else notify('Student registered for event.'); }
-    catch(err:any) { notify(err.message ?? 'Could not register student.'); }
+  const toggleRegistration = async (student:any, event:any, existing:any) => {
+    try {
+      if (existing) {
+        if (deleteRegistration) await deleteRegistration({registrationId:existing._id});
+        else setLocalRegistrations(curr=>curr.filter(row=>row._id!==existing._id));
+      } else if (registerStudent) {
+        await registerStudent({studentId:student._id,eventId:event._id});
+      } else {
+        setLocalRegistrations(curr=>[...curr,{_id:crypto.randomUUID(),studentId:student._id,eventId:event._id,student,event,registeredAt:Date.now()}]);
+      }
+    } catch(err:any) { notify(err.message ?? 'Could not update event registration.'); }
   };
   const studentColumns:any[] = [
     {accessorKey:'name',header:'Name',filterFn:'includesString'},
@@ -100,12 +105,7 @@ function App({ students:remoteStudents, tournaments:remoteTournaments, events:re
     {accessorKey:'phoneNumber',header:'Phone number',filterFn:'includesString'},
     {id:'actions',header:'',enableColumnFilter:false,enableHiding:false,cell:({row}:any)=><div className="flex items-center gap-1"><Button size="sm" variant="outline" onClick={()=>setEditingStudent(row.original)}>Edit</Button><Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Delete ${row.original.name}`} onClick={()=>removeStudent(row.original)}><Trash2/></Button></div>},
   ];
-  const registrationColumns:any[] = [
-    {accessorFn:(row:any)=>row.student?.name??'Student',id:'student',header:'Student',filterFn:'includesString'},
-    {accessorFn:(row:any)=>row.event?.name??'Event',id:'event',header:'Event',filterFn:'includesString'},
-    {accessorFn:(row:any)=>row.event?.ageGroup??'',id:'ageGroup',header:'Age group',filterFn:'includesString'},
-    {id:'actions',header:'',enableColumnFilter:false,enableHiding:false,cell:({row}:any)=><Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label="Remove registration" onClick={()=>removeRegistration(row.original)}><Trash2/></Button>},
-  ];
+
 
 
   return <SidebarProvider defaultOpen={true} className="min-h-screen min-w-[320px] bg-background font-sans text-foreground">
@@ -121,8 +121,8 @@ function App({ students:remoteStudents, tournaments:remoteTournaments, events:re
           <Dialog open={Boolean(editingStudent)} onOpenChange={open=>!open&&setEditingStudent(null)}><DialogContent><DialogHeader><DialogTitle>Edit student</DialogTitle><DialogDescription>Update the student details.</DialogDescription></DialogHeader>{editingStudent&&<form key={editingStudent._id} onSubmit={onEditStudent} className="grid gap-4"><Field label="Full name"><Input name="name" defaultValue={editingStudent.name} required/></Field><div className="grid grid-cols-2 gap-3"><Field label="Class"><Input name="className" defaultValue={editingStudent.className} required/></Field><Field label="Admission number"><Input name="registrationNumber" defaultValue={editingStudent.registrationNumber} required/></Field></div><div className="grid grid-cols-2 gap-3"><DatePickerInput name="dateOfBirth" value={editingStudent.dateOfBirth} required/><Field label="Phone number"><Input name="phoneNumber" defaultValue={editingStudent.phoneNumber} required/></Field></div><DialogFooter><Button type="submit">Save changes</Button></DialogFooter></form>}</DialogContent></Dialog>
         </>}
         {page==='Event registration'&&<>
-          <PageHeading eyebrow="EVENT REGISTRATION" title="Register students" description="Assign students to events in a tournament."/>
-          <div className="mt-6 grid gap-6"><Card><CardHeader><CardTitle>New registration</CardTitle><CardDescription>Select an event and student.</CardDescription></CardHeader><CardContent><form onSubmit={onRegister} className="grid gap-4"><Field label="Tournament event"><Select value={selectedEvent} onValueChange={setSelectedEvent}><SelectTrigger><SelectValue placeholder="Choose an event"/></SelectTrigger><SelectContent>{events.map((ev:any)=><SelectItem key={ev._id} value={ev._id}>{ev.name} · {ev.ageGroup}</SelectItem>)}</SelectContent></Select></Field><Field label="Student"><Select value={studentId} onValueChange={setStudentId}><SelectTrigger><SelectValue placeholder="Choose a student"/></SelectTrigger><SelectContent>{organizedStudents.map((s:any)=><SelectItem key={s._id} value={s._id}>{s.className} · {s.name} · {s.registrationNumber}</SelectItem>)}</SelectContent></Select></Field><Button type="submit" className="mt-2"><Plus/>Register student</Button></form></CardContent></Card><Card className="w-full min-w-0 gap-0 overflow-hidden border-0 py-5 shadow-none"><DataTable data={registrations} columns={registrationColumns} emptyText="No registrations match those filters."/></Card></div>
+          <PageHeading eyebrow="EVENT REGISTRATION" title="Register students" description="Choose a tournament and age group, then select the events for each student."/>
+          <RegistrationGrid students={organizedStudents} tournaments={tournaments} registrations={registrations} onToggle={toggleRegistration} disabled={Boolean(import.meta.env.PUBLIC_CONVEX_URL && remoteRegistrations===undefined)}/>
         </>}
         {page==='Tournaments'&&<>
           <PageHeading eyebrow="TOURNAMENT SETUP" title="Tournaments & events" description="Create a tournament, then define its events and age groups." action={<Dialog open={tournamentOpen} onOpenChange={open=>{setTournamentOpen(open);if(!open){setEditingTournament(null);setEventRows([blankEvent()]);}}}><DialogTrigger asChild><Button onClick={()=>{setEditingTournament(null);setEventRows([blankEvent()]);}}><Plus/>Create tournament</Button></DialogTrigger><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle>{editingTournament?"Edit tournament":"Create tournament"}</DialogTitle><DialogDescription>{editingTournament?"Update tournament details and its events.":"Add tournament details and its events."}</DialogDescription></DialogHeader><form onSubmit={onCreateTournament} className="grid gap-4"><div className="grid gap-3 sm:grid-cols-2"><Field label="Tournament name"><Input name="name" required placeholder="Annual Sports Meet" defaultValue={editingTournament?.name}/></Field><Field label="Venue"><Input name="venue" required placeholder="School grounds" defaultValue={editingTournament?.venue}/></Field></div><DatePickerInput key={editingTournament?._id??"new-tournament-date"} name="startDate" label="Start date" value={normalizeDate(editingTournament?.startDate)}/><div className="flex items-center justify-between border-t pt-4"><div><p className="text-sm font-medium">Events</p><p className="text-xs text-muted-foreground">Set an age group for each event.</p></div><Button type="button" variant="outline" size="sm" onClick={()=>setEventRows([...eventRows,blankEvent()])}><Plus/>Add event</Button></div>{eventRows.map((row,index)=><div key={index} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[1.3fr_1fr_1fr]"><Field label="Event name"><Input value={row.name} onChange={e=>setEventRows(eventRows.map((r,i)=>i===index?{...r,name:e.target.value}:r))} required placeholder="100m sprint"/></Field><Field label="Age group"><Select value={row.ageGroup} onValueChange={ageGroup=>setEventRows(eventRows.map((r,i)=>i===index?{...r,ageGroup}:r))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{ageGroups.map(age=><SelectItem key={age} value={age}>{age}</SelectItem>)}</SelectContent></Select></Field><DatePickerInput key={row._id??`new-${index}`} name={`eventDate-${index}`} label="Event date" value={row.eventDate} onValueChange={eventDate=>setEventRows(eventRows.map((r,i)=>i===index?{...r,eventDate}:r))}/>{eventRows.length>1&&<Button type="button" variant="ghost" size="sm" className="sm:col-span-3 sm:justify-self-end" onClick={()=>setEventRows(eventRows.filter((_,i)=>i!==index))}><X/>Remove event</Button>}</div>)}<DialogFooter><Button type="submit">{editingTournament?"Save changes":"Create tournament"}</Button></DialogFooter></form></DialogContent></Dialog>}/>
@@ -136,9 +136,9 @@ function PageHeading({eyebrow,title,description,action}:any){return <div classNa
 
 const client=import.meta.env.PUBLIC_CONVEX_URL?new ConvexReactClient(import.meta.env.PUBLIC_CONVEX_URL):null;
 function ConnectedApp(){
- const students=useQuery(api.students.list,{}); const tournaments=useQuery(api.tournaments.list,{}); const events=useQuery(api.tournaments.listEvents,{}); const registrations=useQuery(api.registrations.list,{});
+ const students=useQuery(api.students.list,{}); const tournaments=useQuery(api.tournaments.list,{}); const registrations=useQuery(api.registrations.list,{});
  const createStudent=useMutation(api.students.create); const updateStudent=useMutation(api.students.update); const deleteStudent=useMutation(api.students.remove); const deleteRegistration=useMutation(api.registrations.remove); const deleteTournament=useMutation(api.tournaments.remove); const deleteEvent=useMutation(api.tournaments.removeEvent); const cleanShashmikaPhone=useMutation(api.students.cleanShashmikaPhone);
  useEffect(()=>{ void cleanShashmikaPhone({}); },[cleanShashmikaPhone]); const createTournament=useMutation(api.tournaments.create); const updateTournament=useMutation(api.tournaments.update); const registerStudent=useMutation(api.registrations.add);
- return <App students={students} tournaments={tournaments} events={events} registrations={registrations} createStudent={createStudent} updateStudent={updateStudent} deleteStudent={deleteStudent} deleteRegistration={deleteRegistration} deleteTournament={deleteTournament} deleteEvent={deleteEvent} createTournament={createTournament} updateTournament={updateTournament} registerStudent={registerStudent}/>;
+ return <App students={students} tournaments={tournaments} registrations={registrations} createStudent={createStudent} updateStudent={updateStudent} deleteStudent={deleteStudent} deleteRegistration={deleteRegistration} deleteTournament={deleteTournament} deleteEvent={deleteEvent} createTournament={createTournament} updateTournament={updateTournament} registerStudent={registerStudent}/>;
 }
 export default function Dashboard(){return client?<ConvexProvider client={client}><ConnectedApp/></ConvexProvider>:<App/>;}
