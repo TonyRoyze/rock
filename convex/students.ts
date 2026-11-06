@@ -41,3 +41,12 @@ export const cleanShashmikaPhone = mutation({
     return true;
   },
 });
+
+export const remove = mutation({
+  args: { studentId: v.id('students') },
+  handler: async (ctx, { studentId }) => {
+    const registrations = await ctx.db.query('registrations').withIndex('by_student', q => q.eq('studentId', studentId)).collect();
+    for (const registration of registrations) await ctx.db.delete(registration._id);
+    await ctx.db.delete(studentId);
+  },
+});

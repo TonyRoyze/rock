@@ -17,3 +17,8 @@ export const add = mutation({
     return ctx.db.insert('registrations', { ...args, registeredAt: Date.now() });
   },
 });
+
+export const remove = mutation({
+  args: { registrationId: v.id('registrations') },
+  handler: async (ctx, { registrationId }) => ctx.db.delete(registrationId),
+});
